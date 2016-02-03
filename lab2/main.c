@@ -71,12 +71,23 @@ void main(){
 	T2CONbits.TON = 1;
 
 	// ==== timer 3 init
+	T3CONbits.TON = 0;
+	T3CONbits.TCS = 0; // Select internal clock
+	T3CONbits.TGATE = 0; // Disable Gated Timer mode
+	T3CONbits.TCKPS = 0b00; // Select 1:1 Prescaler
+	TMR3 = 0x00; // Clear timer register
+	PR3 = 65536; // Load the period value, 1ms
+	T3CONbits.TON = 1;
 
 	int count = 0;
 	int min = 0;
 	int sec = 0;
 	int msec = 0;
+	int T3Start = 0;
+	int elapsedTime = 0;
  	while(1){
+	    T3Start = TMR3;
+
 	    count++;
 
 	    TOGGLELED(LED4_PORT);
@@ -89,6 +100,14 @@ void main(){
             	lcd_locate(0,0);
             	lcd_printf("%2d:%2d:%3d\n",min,sec,msec);
 	    }
+
+	    if (TMR3 > T3Start){
+	    	elapsedTime = TMR3-T3Start;
+	    }else{
+	    	elapsedTime = TMR3+65536-T3Start;
+	    }
+            lcd_locate(0,1);
+            lcd_printf("%d, %.4f\n",elapsedTime,elapsedTime/12.8e6);
 	}
 }
 
