@@ -37,21 +37,26 @@ void main(){
 	lcd_clear();
 	lcd_locate(0,0);
 
-        //Task 1
+    //Task 1
 	lcd_printf("Eric Meyers\n");
 	lcd_printf("Long Le\n");
 	lcd_printf("Ahmed Abulila\n");
 
+	// those PINs as output
+	LEDTRIS &= ~(BV(LED1) | BV(LED2) | BV(LED3) | BV(LED4) | BV(LED5));
+	CLEARLED(LED1_PORT);
+	CLEARLED(LED2_PORT);
+	CLEARLED(LED3_PORT);
 
-        LEDTRIS &= ~(BV(LED1) | BV(LED2) | BV(LED3) | BV(LED4) | BV(LED5));
-        CLEARLED(LED1_PORT);
-        CLEARLED(LED2_PORT);
-        CLEARLED(LED3_PORT);
-        SETBIT(AD1PCFGHbits.PCFG20);
-        TRISEbits.TRISE8 = 1;
-        TRISDbits.TRISD10 = 1;
-        PrevStat = PORTEbits.RE8;
-        Nop();
+	// put the shared PORTE PIN8 in digital mode
+	SETBIT(AD1PCFGHbits.PCFG20); 
+
+	// those PINs as input
+	TRISEbits.TRISE8 = 1;
+	TRISDbits.TRISD10 = 1;
+
+	PrevStat = PORTEbits.RE8;
+	Nop();
 
  	while(1){
             //Task 2
@@ -63,10 +68,10 @@ void main(){
             //Task 6
             if(Tcount ==  2500){
                 if(DBcount > 250){
-                    if(PrevStat != PORTEbits.RE8)
-                        DBNOcount++;
+					// state changed declared
+                    //if(PrevStat != PORTEbits.RE8)
+                    DBNOcount++;
                     PrevStat = PORTEbits.RE8;
-
                 }
                 lcd_locate(0,3);
                 lcd_printf("Count=%d",DBNOcount/2);//DBcount);
