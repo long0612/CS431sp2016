@@ -20,7 +20,8 @@ _FWDT(FWDTEN_OFF);
 // Disable Code Protection
 _FGS(GCP_OFF);  
 
-int globalClock = 0; // ms
+int PrevStat = 0;
+uint32_t globalClock = 0; // ms
 
 void main(){
 	// LCD init
@@ -42,6 +43,7 @@ void main(){
 	IPC5bits.INT1IP = 0x01;
 	IFS1bits.INT1IF = 0;
 	IEC1bits.INT1IE = 1;
+        PrevStat = PORTEbits.RE8;
 
 	// ==== LPOSCEN init
 	__builtin_write_OSCCONL(OSCCONL | 2);
@@ -65,7 +67,7 @@ void main(){
 	T2CONbits.TCKPS = 0b10; // Select 1:64 Prescaler
 	TMR2 = 0x00; // Clear timer register
 	PR2 = 400; // Load the period value, 2ms
-	IPC0bits.T2IP = 0x01;
+	IPC1bits.T2IP = 0x01; //Not IPC0bits
 	IFS0bits.T2IF = 0;
 	IEC0bits.T2IE = 1;
 	T2CONbits.TON = 1;
@@ -76,15 +78,17 @@ void main(){
 	T3CONbits.TGATE = 0; // Disable Gated Timer mode
 	T3CONbits.TCKPS = 0b00; // Select 1:1 Prescaler
 	TMR3 = 0x00; // Clear timer register
-	PR3 = 65536; // Load the period value, 1ms
+	PR3 = 65535; // Load the period value
 	T3CONbits.TON = 1;
 
-	int count = 0;
-	int min = 0;
-	int sec = 0;
-	int msec = 0;
-	int T3Start = 0;
-	int elapsedTime = 0;
+	uint32_t count = 0;
+	uint32_t min = 0;
+	uint32_t sec = 0;
+	uint32_t msec = 0;
+	uint32_t T3Start = 0;
+	uint32_t elapsedTime = 0;
+        lcd_locate(0,0);
+        lcd_printf("00:00:000\n");
  	while(1){
 	    T3Start = TMR3;
 
@@ -93,21 +97,50 @@ void main(){
 	    TOGGLELED(LED4_PORT);
 
 	    if (count == 2000){
-		min = globalClock/6e4;
-		sec = (globalClock % 6e3)/1e3;
-		msec = (globalClock % 6e3) % 1e3;
+		min = globalClock/60000;
+		sec = (globalClock % 60000)/1000;
+		msec = (globalClock % 60000) % 1000;/*
+                sec = globalClock / 1000;
+                min = sec /60;
+                msec = globalClock;*/
 
             	lcd_locate(0,0);
-            	lcd_printf("%2d:%2d:%3d\n",min,sec,msec);
+            	lcd_printf("%02ld:%02ld:%3ld\n",min,sec,msec);
+                //lcd_clear_row(1);
+            	//lcd_locate(0,1);
+            	//lcd_printf("%ld\n",globalClock);
+                //SETLED(LED5_PORT);
+                count = 0;
 	    }
-
+/*
 	    if (TMR3 > T3Start){
+
 	    	elapsedTime = TMR3-T3Start;
 	    }else{
 	    	elapsedTime = TMR3+65536-T3Start;
 	    }
-            lcd_locate(0,1);
-            lcd_printf("%d, %.4f\n",elapsedTime,elapsedTime/12.8e6);
+            if (count == 1000){
+                lcd_locate(0,3);
+                //lcd_printf("%ld\n %.4f\n",elapsedTime, elapsedTime/12800000);
+                lcd_printf("%d\n",TMR3);
+            }
+ * */
+            if (count == 1500){
+                if (TMR3 > T3Start){
+                     lcd_locate(0,3);
+                    //lcd_printf("%ld\n %.4f\n",elapsedTime, elapsedTime/12800000);
+                     //lcd_clear_row(3);
+                    lcd_printf("%04ld\n",TMR3-T3Start);
+                    lcd_printf("%0.4f\n",(TMR3-T3Start)/12800000.0);
+                } else {
+                     lcd_locate(0,3);
+                     //lcd_clear_row(3);
+                    //lcd_printf("%ld\n %.4f\n",elapsedTime, elapsedTime/12800000);
+                    lcd_printf("%04ld\n",(65536-T3Start+TMR3));
+                    lcd_printf("%0.4f\n",(65536-T3Start+TMR3)/12800000.0);
+                }
+            }
+            
 	}
 }
 
@@ -124,8 +157,42 @@ void __attribute__ ((__interrupt__)) _T2Interrupt(void){
 	globalClock += 2;
 }
 
+//int DBNOcount = 0;
+
 void __attribute__ ((__interrupt__)) _INT1Interrupt(void){
 	IFS1bits.INT1IF = 0;
+        uint32_t DBcount = 0;
+        uint32_t Tcount = 0;
 
-	globalClock = 0;
+        /*if(Tcount ==  2500){
+            if(DBcount > 250){
+                                    // state changed declared
+                //if(PrevStat != PORTEbits.RE8)
+                DBNOcount++;
+                PrevStat = PORTEbits.RE8;
+                globalClock = 0;
+            }
+            Tcount = 0;
+            DBcount = 0;
+        } else if ((PORTEbits.RE8 == PrevStat) && (Tcount != 0)) {
+            Tcount++;
+        } else if (PORTEbits.RE8 != PrevStat) {
+            DBcount++;
+            Tcount++;
+        }*/
+        for (Tcount = 0; Tcount < 2500; Tcount ++ ){
+            if (PORTEbits.RE8 != PrevStat)
+                DBcount++;
+        }
+
+
+        if(DBcount > 250){
+                                // state changed declared
+            //if(PrevStat != PORTEbits.RE8)
+            PrevStat = PORTEbits.RE8;
+            globalClock = 0;
+        }
+        Tcount = 0;
+        DBcount = 0;
 }
+
