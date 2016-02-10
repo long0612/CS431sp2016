@@ -131,13 +131,13 @@ void main(){
                     //lcd_printf("%ld\n %.4f\n",elapsedTime, elapsedTime/12800000);
                      //lcd_clear_row(3);
                     lcd_printf("%04ld\n",TMR3-T3Start);
-                    lcd_printf("%0.4f\n",(TMR3-T3Start)/12800000.0);
+                    lcd_printf("%04g\n",(TMR3-T3Start)/12800000.0);
                 } else {
                      lcd_locate(0,3);
                      //lcd_clear_row(3);
                     //lcd_printf("%ld\n %.4f\n",elapsedTime, elapsedTime/12800000);
                     lcd_printf("%04ld\n",(65536-T3Start+TMR3));
-                    lcd_printf("%0.4f\n",(65536-T3Start+TMR3)/12800000.0);
+                    lcd_printf("%04g\n",(65536-T3Start+TMR3)/12800000.0);
                 }
             }
             
