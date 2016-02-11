@@ -94,6 +94,7 @@ int main(int argc, char* argv[])
 	printf("new config set\n");
 
 
+	int dfid = fopen("hexdump","w");
 	while(1)
 	{
 		cnt = 0;
@@ -131,6 +132,11 @@ int main(int argc, char* argv[])
 			write (ifd, mCrc, MSG_BYTES_CRC);
 			write (ifd, sizeof(str), MSG_BYTES_MSG_LEN);
 			write (ifd, str, sizeof(str));
+
+			write (dfid, MSG_START,  MSG_BYTES_START);
+			write (dfid, mCrc, MSG_BYTES_CRC);
+			write (dfid, sizeof(str), MSG_BYTES_MSG_LEN);
+			write (difd, str, sizeof(str));
  
 			printf("SENT MESSAGE\n");
 
@@ -168,6 +174,7 @@ int main(int argc, char* argv[])
 
 	// Close the serial port
 	close(ifd);
+	close(dfid);
 	
 	return 0;
 }
