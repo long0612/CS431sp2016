@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
 	int ifd,ofd,i,N,troll=0;	// Input and Output file descriptors (serial/troll)
 	char str[MSG_BYTES_MSG],opt;	// String input
 	char c;
-	int ack = 0;
+	int ack;
 	int cnt = 0;
 	int mCrc,attempts=0;
 	int errno = -1;
@@ -36,13 +36,13 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	printf("CS431 - Lab 03 Server\n(Enter a message to send.  Type \"quit\" to exit)\n");
+	printf("CS431 - Lab 03 Server\n(Enter a mssg to send.  Type \"quit\" to exit)\n");
 
 
 	//
 	// WRITE ME: Open the serial port (/dev/ttyS0) read-write
 	//
-	ifd = open("/dev/ttyS0", O_RDWR | O_NOCTTY | O_NONBLOCK);//O_RDWR);
+	ifd = open("/dev/ttyS0", O_RDWR | O_NOCTTY | O_NONBLOCK );//O_RDWR);
 	if (ifd == -1){
 		printf("Error Reading/Writing TTYS0");
 		return -1;
@@ -92,15 +92,14 @@ int main(int argc, char* argv[])
 	    return -1;
 	}*/
 	printf("new config set\n");
+	//close(ifd);	
 
-
-	int dfid = fopen("hexdump","w");
+	char mssg[260];
 	while(1)
 	{
-		cnt = 0;
+
 		//
-		// WRITE ME: Read a line of input (Hint: use fgetc(stdin) to read each character)
-		//
+		// WRITE ME: Read a line of input (Hint: use fgetc(stdin) to read each 
 		while (1){
 			c = fgetc(stdin);
 			if (c == '\n')
@@ -109,54 +108,55 @@ int main(int argc, char* argv[])
 		}
 		str[cnt] = NULL;
 		printf("%s\n",str);
-		
-
-		if (strcmp(str, "quit") == 0) break;
+		printf("%d\n",cnt);
+	    	if (strcmp(str, "quit") == 0) break;
 
 		//
 		// WRITE ME: Compute crc (only lowest 16 bits are returned)
 		//
+        	  
+		cnt = strlen(str);
 		mCrc = pc_crc16(str, cnt);
-		printf("%d", mCrc);
-	
-		ack = 0;
-		while (!ack)
-		{
-			printf("Sending (attempt %d)...\n", ++attempts);
+		ack = 0, attempts = 0;
 
-			
-			// 
-			// WRITE ME: Send message
-			//
-			write (ifd, MSG_START,  MSG_BYTES_START);
-			write (ifd, mCrc, MSG_BYTES_CRC);
-			write (ifd, sizeof(str), MSG_BYTES_MSG_LEN);
-			write (ifd, str, sizeof(str));
-
-			write (dfid, MSG_START,  MSG_BYTES_START);
-			write (dfid, mCrc, MSG_BYTES_CRC);
-			write (dfid, sizeof(str), MSG_BYTES_MSG_LEN);
-			write (difd, str, sizeof(str));
- 
-			printf("SENT MESSAGE\n");
-
+		mssg[0] = 0x0;
+		mssg[1] = (mCrc & 0xff00) >> 8;
+		mssg[2] = mCrc & 0xff;
+		mssg[3] = cnt;
+		strcpy(&(mssg[4]), str);
+		printf("%s\n", mssg);
+		printf("%x\n", mCrc);
 		
-			printf("Message sent, waiting for ack... ");
+        	while (!ack)
+        	{
 
+			printf("Sending (attempt %d)...\n", ++attempts);
 			
+			//ofd = open("/dev/ttyS0", O_RDWR | O_NOCTTY | O_NONBLOCK);//O_RDWR);
+			if (ofd == -1){
+				printf("Error Reading/Writing TTYS0");
+				return -1;
+			}
+			write(ofd, &mssg, 4+cnt);
+            		//close(ofd);
+			printf("Message sent, waiting for ack... ");	
+
+					
+			//ifd = open("/dev/ttyS0", O_RDWR);
 			//
 			// WRITE ME: Wait for MSG_ACK or MSG_NACK
 			//
-			read(ifd, c, 1);
-			printf("receive char %d\n",c);
-			if (c == MSG_ACK)
-				ack = 1;
-			else if (c == MSG_NACK)
-				ack = 0;
-			
-
+			//fflush(ifd);
+			read(ifd,&ack,4);
+			fprintf (stderr, "error %d from read\n", errno);
+			//close(ifd);
+			//printf("bytes read ack: %d\n", read(ifd,&ack,4));
+			//fgets(ack, ifd);			
+			printf("ack is %x\n",ack);
+			ack = 1;
 			printf("%s\n", ack ? "ACK" : "NACK, resending");
 		}
+		cnt = 0;
 		printf("\n");
 	}
 
@@ -174,7 +174,6 @@ int main(int argc, char* argv[])
 
 	// Close the serial port
 	close(ifd);
-	close(dfid);
 	
 	return 0;
 }
