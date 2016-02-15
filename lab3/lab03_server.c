@@ -47,7 +47,7 @@ int main(int argc, char* argv[])
     printf("Error Reading/Writing TTYS0");
     return -1;
   }
-  printf("file descriptor opened\n");
+  //printf("file descriptor opened\n");
 
 
   // Start the troll if necessary
@@ -64,7 +64,7 @@ int main(int argc, char* argv[])
       ofd = fileno(pfile);
     }
   else ofd = ifd;// Use the serial port for both input and output
-  printf("done trolling\n");
+  //printf("done trolling\n");
 
 
   //
@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
         fprintf (stderr, "error %d from tcsetattr", errno);
 	    return -1;
 	    }*/
-  printf("new config set\n");
+  //  printf("new config set\n");
   //close(ifd);
 
   char mssg[260];
@@ -107,8 +107,8 @@ int main(int argc, char* argv[])
 	str[cnt++] = c;
       }
       str[cnt] = NULL;
-      printf("%s\n",str);
-      printf("%d\n",cnt);
+      //printf("%s\n",str);
+      //printf("%d\n",cnt);
       if (strcmp(str, "quit") == 0) break;
 
       //
@@ -124,8 +124,8 @@ int main(int argc, char* argv[])
       mssg[2] = mCrc & 0xff;
       mssg[3] = cnt;
       strcpy(&(mssg[4]), str);
-      printf("%s\n", mssg);
-      printf("%x\n", mCrc);
+      //printf("%s\n", mssg);
+      //printf("%x\n", mCrc);
       
       while (!ack)
         {
@@ -152,7 +152,7 @@ int main(int argc, char* argv[])
 	  //close(ifd);
 	  //printf("bytes read ack: %d\n", read(ifd,&ack,4));
 	  //fgets(ack, ifd);
-	  printf("ack is %x\n",ack);
+	  //printf("ack is %x\n",ack);
 	  //ack = 1;
 	  printf("%s\n", ack ? "ACK" : "NACK, resending");
 	}
