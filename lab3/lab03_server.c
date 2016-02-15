@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
 	  //
 	  //fflush(ifd);
 	  while(read(ifd,&ack,1) < 0);
-	  fprintf (stderr, "error %d from read\n", errno);
+	  //fprintf (stderr, "error %d from read\n", errno);
 	  //close(ifd);
 	  //printf("bytes read ack: %d\n", read(ifd,&ack,4));
 	  //fgets(ack, ifd);
