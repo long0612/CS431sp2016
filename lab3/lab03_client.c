@@ -8,6 +8,7 @@
 #include "led.h"
 #include "flexserial.h"
 #include "crc16.h"
+#include "lab03.h"
 
 /* Initial configuration by EE */
 // Primary (XT, HS, EC) Oscillator with PLL
@@ -22,7 +23,6 @@ _FWDT(FWDTEN_OFF);
 // Disable Code Protection
 _FGS(GCP_OFF);  
 
-bool isCorrupt = false;
 
 void main(){
 	// LCD init
@@ -46,39 +46,63 @@ void main(){
 	uart2_init(9600);
 
 	uint8_t c;	
-	uint16_t rCRC; // remote CRC
+	uint16_t rCRC = 0; // remote CRC
 	uint16_t lCRC = 0; // local CRC
 	uint16_t i = 0;
 	uint16_t N;
+        uint16_t nFails = 0;
 
  	while(1){
 		c = uart2_getc();
-		if (c != MSG_START && lCRC == 0){
+		if (c != MSG_START && i == 0){
 			continue;
 		}else {
-			lCRC = crc_update(lCRC,c);
-
+                        lcd_locate(0,0);
+                        lcd_printf("seen the first byte\n");
+                        lcd_locate(0,2);
+                        lcd_printf("%4d\n",i);
+                        
 			if (i == 0){
-				T1CONbits.TON = 1; // Start Timer
+                            T1CONbits.TON = 1; // Start Timer
 			}else if (i == 1){
-      			rCRC |= c << 8;
+                            rCRC |= c << 8;
 			}else if (i == 2){
  			    rCRC |= c;
 			}else if (i == 3){
-				N = c;
-			}else if (i >= 4 && i < N+3){
-				if (isCorrupt){
-					// reset on corrupt data
-					lCRC = 0;
-					i = 0;
-				}
-			}else if (i == N+3){
-				// reset on done
-				if (rCRC == lCRC){
-				}
+                            N = c;
+                            lcd_locate(0,5);
+                            lcd_printf("at message %x\n", N);
+			}else if (i >= 4 && i < N+2){
+                            lcd_locate(0,6);
+                            lcd_printf("%x\n",c);
+
+                            lCRC = crc_update(lCRC,c);
+                            if (isCorrupt){
+                                T1CONbits.TON = 0;
+                                isCorrupt = 0;
+                                nFails++;
+				// reset on corrupt data
+                                rCRC = 0;
 				lCRC = 0;
 				i = 0;
-					
+                                // print out fails
+                                lcd_locate(0,7);
+                                lcd_printf("failed %d\n",nFails);
+                                uart2_putc(MSG_NACK);
+                            }
+			}else {
+                            // reset on done
+                            if (rCRC == lCRC){
+                                T1CONbits.TON = 0;
+                                // print out CRC
+                                //lcd_locate(0,0);
+                                //lcd_printf("CRC is %x\n",rCRC);
+                                nFails = 0;
+                                uart2_putc(MSG_ACK);
+                            }
+                            rCRC = 0;
+                            lCRC = 0;
+                            i = 0;
 			}
 
 			i += 1;
@@ -89,5 +113,5 @@ void main(){
 void __attribute__ ((__interrupt__)) _T1Interrupt(void){
 	IFS0bits.T1IF = 0; // clear the interrupt flag
 	
-	isCorrupt = true;
+	isCorrupt = 1;
 }

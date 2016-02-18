@@ -4,6 +4,11 @@
 #include <stdio.h>
 #include <libpic30.h>
 
+#include "lcd.h"
+//#include "led.h"
+
+int isCorrupt = 0;
+
 void uart2_init(uint16_t baud){
 	// ==== Stop UART port
 	CLEARBIT(U2MODEbits.UARTEN); //Disable UART for configuration
@@ -20,7 +25,7 @@ void uart2_init(uint16_t baud){
 	// use the following equation to compute the proper
 	// setting for a specific baud rate
 	U2MODEbits.BRGH = 0; //Set low speed baud rate
-	U2BRG = (uint32_t)800000 / baud -1; //Set the baudrate to be at 9600
+	U2BRG = (uint32_t)800000 / 9600-1;//baud -1; //Set the baudrate to be at 9600
 	// Operation settings and start port
 	U2MODE = 0; // 8-bit, no parity and, 1 stop bit
 	U2MODEbits.RTSMD = 0; //select simplex mode
@@ -45,15 +50,16 @@ uint8_t uart2_getc(){
 	}
 	//Check if there is data in the buffer (by checking UxSTAbits.URXDA. If yes, then read the data from UxRXREG.
 	// non-blocking read
+        /*
 	if (U2STAbits.URXDA) {
 		return (U2RXREG & 0x00FF);
 	}else{
 		return 0xFF;
 	}
-	
-	// block read
-	/*
-	while(!U2STAbits.URXDA);
-	return (U2RXREG & 0x00FF);
 	*/
+	// block read
+	
+	while(!U2STAbits.URXDA && !isCorrupt);
+	return (U2RXREG & 0x00FF);
+	
 }
