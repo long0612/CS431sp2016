@@ -125,7 +125,7 @@ int main(int argc, char* argv[])
       mssg[3] = cnt;
       strcpy(&(mssg[4]), str);
       //printf("%s\n", mssg);
-      //printf("%x\n", mCrc);
+      printf("%x\n", mCrc);
       
       while (!ack)
         {
