@@ -1,18 +1,15 @@
 
-SERVER = lab4
-SERVER_OBJS = $(SERVER).o pc_crc16.o
+EXEC = lab4
+OBJS = $(EXEC).o linuxanalog.o
 
 CC = gcc
-CFLAGS = -I.. -g -Wall
+CFLAGS = -I.. -g -Wall -lrt
 
-all : server 
-
-# Server (PC)
-server : $(SERVER_OBJS)
-	$(CC) $(CFLAGS) -o $(SERVER) $(SERVER_OBJS)
+all : $(OBJS)
+	$(CC) $(CFLAGS) -o $(EXEC) $(OBJS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean : 
-	rm -f *.o $(SERVER)
+	rm -f *.o $(EXEC)
