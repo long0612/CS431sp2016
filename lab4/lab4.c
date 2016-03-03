@@ -17,20 +17,20 @@ void handler_function(int signum);
 void setup_signal_handler();
 
 int main(){
-	int user_voltage_1 = 6;
-	int user_voltage_2 = 6;
+	double user_voltage_1 = 6;
+	double user_voltage_2 = 6;
 	printf("Enter voltage #1 (-5 to +5 volts, other to quit):");
-	while (user_voltage_1 > 5 || user_voltage_1 < -5){	
+	while (user_voltage_1 > 5.0 || user_voltage_1 < -5.0){	
 		//printf("Enter voltage #1 (-5 to +5 volts, other to quit):");
-		scanf("%d", &user_voltage_1);
+		scanf("%lf", &user_voltage_1);
 	}
 	printf("Enter voltage #2 (-5 to +5 volts, other to quit):");
-	while ((user_voltage_2 < -5 || user_voltage_2 > 5)){// || user_voltage_1 < user_voltage_2){
+	while ((user_voltage_2 < -5.0 || user_voltage_2 > 5.0)){// || user_voltage_1 < user_voltage_2){
 		//printf("Enter voltage #2 (-5 to +5 volts, other to quit):");
-		scanf("%d", &user_voltage_2); 
+		scanf("%lf", &user_voltage_2); 
 	}
-	 posVol = (uint16_t) (user_voltage_1+5.0)/10.0*4096;
-	 negVol = (uint16_t) (user_voltage_2+5.0)/10.0*4096;
+	 posVol = (uint16_t) (user_voltage_1+5.0)/10.0*4095;
+	 negVol = (uint16_t) (user_voltage_2+5.0)/10.0*4095;
 
 	printf("Init... \n");
 	das1602_initialize();
@@ -55,7 +55,7 @@ int main(){
 }
 
 void setup_timer(){
-	uint16_t user_frequency = -1;
+	long user_frequency = 10000000000000;
 	if (timer_create(CLOCK_REALTIME,NULL,&timer1) != 0){
 		// If there is an error, print out a message and exit.
 		perror("timer_create");
@@ -79,10 +79,10 @@ void setup_timer(){
 	timer1_time.it_interval.tv_sec = 0; // 0 seconds
 
 	printf("Enter frequency (0 to 500000000.000000 Hz, other to quit):");
-	scanf("%d", &user_frequency);
-	while (user_frequency > 500000000 || user_frequency < 0){
+	scanf("%lu", &user_frequency);
+	while ((user_frequency > 500000000 || user_frequency < 0)){
 		printf("Enter frequency (0 to 500000000.000000 Hz, other to quit):");
-		scanf("%d", &user_frequency);
+		scanf("%lu", &user_frequency);
 	}
 
 	timer1_time.it_interval.tv_nsec = 500000000 / user_frequency;// *(1/2000000000);//* 50000;//5000000; // 10 milliseconds 
