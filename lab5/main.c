@@ -24,6 +24,9 @@ _FGS(GCP_OFF);
 int PrevStat = 0;
 int state = 0;
 
+uint16_t getX();
+uint16_t getY();
+
 void main(){
 	// LCD init
 	__C30_UART=1;
@@ -67,7 +70,8 @@ void main(){
 	IEC1bits.INT1IE = 1;
         PrevStat = PORTEbits.RE8;
 
-        motor_init();
+        motor_init(0);
+        motor_init(1);
 
         uint16_t xVal = 0;
         uint16_t xValMin = 0;
@@ -78,69 +82,98 @@ void main(){
         uint16_t yValMin = 0;
         uint16_t yValMax = 0;
         uint16_t yServo = 0;
-        
- 	while(state < 7 && PORTEbits.RE8 == 1){
-            // read from x-axis
-            AD2CHS0bits.CH0SA = 0x004; //set ADC to Sample AN4 pin
-            SETBIT(AD2CON1bits.SAMP); //start to sample
-            while(!AD2CON1bits.DONE); //wait for conversion to finish
-            CLEARBIT(AD2CON1bits.DONE); //MUST HAVE! clear conversion done bit
-            xVal = ADC2BUF0; //return sample
 
-            // read from y-axis
-            AD2CHS0bits.CH0SA = 0x005; //set ADC to Sample AN5 pin
-            SETBIT(AD2CON1bits.SAMP); //start to sample
-            while(!AD2CON1bits.DONE); //wait for conversion to finish
-            CLEARBIT(AD2CON1bits.DONE); //MUST HAVE! clear conversion done bit
-            yVal = ADC2BUF0; //return sample
+        while (state == 0){
+            xVal = getX();
+            lcd_locate(0,1);
+            lcd_printf("x max: %d",xVal);
+        }
+        xValMax = xVal;
+        while (PORTEbits.RE8 == 0);
 
-            // print out current value
-            switch (state){
-                case 5: 
-                    lcd_locate(0,6);
-                    lcd_printf("y width: %d",yVal);
-                    break;
-                case 4:
-                    lcd_locate(0,5);
-                    lcd_printf("x width: %d",xVal);
-                    break;
-                case 3:
-                    lcd_locate(0,4);
-                    lcd_printf("y min: %d",yVal);
-                    break;
-                case 2:
-                    lcd_locate(0,3);
-                    lcd_printf("y max: %d",yVal);
-                    break;
-                case 1:
-                    lcd_locate(0,2);
-                    lcd_printf("x min: %d",xVal);
-                    break;
-                case 0:
-                    lcd_locate(0,1);
-                    lcd_printf("x max: %d",xVal);
-                    break;
+        while (state == 1){
+            xVal = getX();
+            lcd_locate(0,2);
+            lcd_printf("x min: %d",xVal);
+        }
+        xValMin = xVal;
+        while (PORTEbits.RE8 == 0);
+
+        while (state == 2){
+            yVal = getY();
+            lcd_locate(0,3);
+            lcd_printf("y max: %d",yVal);
+        }
+        yValMax = yVal;
+        while (PORTEbits.RE8 == 0);
+
+        while (state == 3){
+            yVal = getY();
+            lcd_locate(0,4);
+            lcd_printf("y min: %d",yVal);
+        }
+        yValMin = yVal;
+        while (PORTEbits.RE8 == 0);
+
+        double minTime = 0.9;
+        double maxTime = 2.1;
+        double range = maxTime - minTime;
+        uint16_t yRange = yValMax - yValMin;
+        uint16_t xRange = xValMax - xValMin;
+        uint16_t duty_us = 0;
+        double duty;
+        while (state == 4){
+            xVal = getX();
+            duty = (((double)xVal - (double)xValMin)/(double)xRange)*range + minTime;
+            duty_us = (uint16_t) (duty*1000.0);
+
+            lcd_locate(0,5);
+            lcd_printf("x wid: %d", duty_us);//_us);
+            if(duty>=0.9 && duty<=2.1){
+                motor_set_duty(0, duty_us);
             }
-            
-            if (state == 1){
-                xValMax = xVal;
-            } else if (state == 2){
-                xValMin = xVal;
-            } else if (state == 3){
-                yValMax = yVal;
-            } else if (state == 4){
-                yValMin = yVal;
-            } else if (state == 5){
-                xServo = xVal;
-            } else if (state == 6){
-                yServo = yVal;
-            }
-
         }
 
+        while (PORTEbits.RE8 == 0);
+
+        while (state == 5){
+            yVal = getY();
+            duty = (((double)yVal - (double)yValMin)/(double)yRange)*range + minTime;
+            duty_us = duty/1000.0;
+            lcd_locate(0,6);
+            lcd_printf("y wid: %f", duty);//_us);
+        }
+        
+        while (PORTEbits.RE8 == 0);
+            
+        while(1);
+
+        //lcd_locate(0,7);
+        //lcd_printf("%d, %d, %d, %d",xValMax,xValMin,yValMax,yValMin);
+
+        //lcd_locate(0,7);
+        //lcd_printf("%d, %d, %d, %d",xValMax,xValMin,yValMax,yValMin);
+
+        //motor_set_duty(0, uint16_t duty_x_us);
+        //motor_set_duty(1, uint16_t duty_y_us);
 }
 
 //int DBNOcount = 0;
+
+uint16_t getX(void){
+    AD2CHS0bits.CH0SA = 0x004; //set ADC to Sample AN4 pin
+    SETBIT(AD2CON1bits.SAMP); //start to sample
+    while(!AD2CON1bits.DONE); //wait for conversion to finish
+    CLEARBIT(AD2CON1bits.DONE); //MUST HAVE! clear conversion done bit
+    return ADC2BUF0; //return sample
+}
+uint16_t getY(void){
+    AD2CHS0bits.CH0SA = 0x005; //set ADC to Sample AN5 pin
+    SETBIT(AD2CON1bits.SAMP); //start to sample
+    while(!AD2CON1bits.DONE); //wait for conversion to finish
+    CLEARBIT(AD2CON1bits.DONE); //MUST HAVE! clear conversion done bit
+    return ADC2BUF0; //return sample
+}
 
 void __attribute__ ((__interrupt__)) _INT1Interrupt(void){
 	IFS1bits.INT1IF = 0;
@@ -155,7 +188,6 @@ void __attribute__ ((__interrupt__)) _INT1Interrupt(void){
 
         if(DBcount > 250){
             // state changed declared
-            //if(PrevStat != PORTEbits.RE8)
             PrevStat = PORTEbits.RE8;
             state++;
         }
