@@ -20,23 +20,31 @@ void motor_init(uint8_t chan){
     if (chan == 0){ // x
         //setup OC8
         CLEARBIT(TRISDbits.TRISD7); /* Set OC8 as output */
+        //OC8R = 3700; /* Set the initial duty cycle to 5ms*/
+        //OC8RS = 3700;
+        OC8CON = 0x0006; /* Set OC8: PWM, no fault check, Timer2 */
+
     }else{ // y
         //setup OC7
         CLEARBIT(TRISDbits.TRISD6); /* Set OC7 as output */
+        //OC7R = 3700;
+        //OC7RS = 3700;
+        OC7CON = 0x0006; /* Set OC8: PWM, no fault check, Timer2 */
     }
+    SETBIT(T2CONbits.TON); /* Turn Timer 2 on */
 }
 
-void motor_set_duty(uint8_t chan, uint16_t duty_us){
-    double duty_ms = duty_us/1000.0;
+void motor_set_duty(uint8_t chan, double duty){
+
     if (chan == 0){ // x
-        OC8R = duty_ms*200; /* Set the initial duty cycle to 5ms*/
-        //OC8RS = duty_ms*200; /* Load OCRS: next pwm duty cycle */
-        OC8CON = 0x0006; /* Set OC8: PWM, no fault check, Timer2 */
-        SETBIT(T2CONbits.TON); /* Turn Timer 2 on */
+        lcd_locate(0,5);
+        lcd_printf("x wid: %0.2f", duty);//_us);
+        //lcd_printf("x wid: %3d", (uint16_t)duty_ms*200.0);//_us);
+        OC8RS = (20.0-duty)*200.0; /* Load OCRS: next pwm duty cycle */
     }else{
-        OC7R = duty_ms*200; /* Set the initial duty cycle to 5ms*/
-        OC7RS = duty_ms*200; /* Load OCRS: next pwm duty cycle */
-        OC7CON = 0x0006; /* Set OC7: PWM, no fault check, Timer2 */
-        SETBIT(T2CONbits.TON); /* Turn Timer 2 on */
+        lcd_locate(0,6);
+        lcd_printf("y wid: %0.2f", duty);//_us);
+        //lcd_printf("y wid: %3d", (uint16_t)duty_ms*200.0);//_us);
+        OC7RS = (20.0-duty)*200.0; /* Load OCRS: next pwm duty cycle */
     }
 }

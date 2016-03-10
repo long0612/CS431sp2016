@@ -48,7 +48,7 @@ void main(){
         SETBIT(AD2PCFGLbits.PCFG4); // RB4 analog ADC2CH4
         SETBIT(AD2PCFGLbits.PCFG5); // RB5 analog ADC2CH5
         //Configure AD2CON1
-        CLEARBIT(AD2CON1bits.AD12B); //set 10b Operation Mode
+        SETBIT(AD2CON1bits.AD12B); //set 12b Operation Mode
         AD2CON1bits.FORM = 0; //set integer output
         AD2CON1bits.SSRC = 0x7; //set automatic conversion
         //Configure AD1CON2
@@ -86,7 +86,7 @@ void main(){
         while (state == 0){
             xVal = getX();
             lcd_locate(0,1);
-            lcd_printf("x max: %d",xVal);
+            lcd_printf("x max:%4d",xVal);
         }
         xValMax = xVal;
         while (PORTEbits.RE8 == 0);
@@ -94,7 +94,7 @@ void main(){
         while (state == 1){
             xVal = getX();
             lcd_locate(0,2);
-            lcd_printf("x min: %d",xVal);
+            lcd_printf("x min:%4d",xVal);
         }
         xValMin = xVal;
         while (PORTEbits.RE8 == 0);
@@ -102,7 +102,7 @@ void main(){
         while (state == 2){
             yVal = getY();
             lcd_locate(0,3);
-            lcd_printf("y max: %d",yVal);
+            lcd_printf("y max:%4d",yVal);
         }
         yValMax = yVal;
         while (PORTEbits.RE8 == 0);
@@ -110,7 +110,7 @@ void main(){
         while (state == 3){
             yVal = getY();
             lcd_locate(0,4);
-            lcd_printf("y min: %d",yVal);
+            lcd_printf("y min:%4d",yVal);
         }
         yValMin = yVal;
         while (PORTEbits.RE8 == 0);
@@ -120,32 +120,35 @@ void main(){
         double range = maxTime - minTime;
         uint16_t yRange = yValMax - yValMin;
         uint16_t xRange = xValMax - xValMin;
-        uint16_t duty_us = 0;
-        double duty;
+        double duty = 0;
         while (state == 4){
             xVal = getX();
             duty = (((double)xVal - (double)xValMin)/(double)xRange)*range + minTime;
-            duty_us = (uint16_t) (duty*1000.0);
 
-            lcd_locate(0,5);
-            lcd_printf("x wid: %d", duty_us);//_us);
+            //lcd_locate(0,5);
+            //lcd_printf("x wid: %0.2f", duty);//_us);
             if(duty>=0.9 && duty<=2.1){
-                motor_set_duty(0, duty_us);
+                motor_set_duty(0, duty);
             }
         }
-
         while (PORTEbits.RE8 == 0);
 
         while (state == 5){
             yVal = getY();
             duty = (((double)yVal - (double)yValMin)/(double)yRange)*range + minTime;
-            duty_us = duty/1000.0;
-            lcd_locate(0,6);
-            lcd_printf("y wid: %f", duty);//_us);
+
+            //lcd_locate(0,6);
+            //lcd_printf("y wid: %0.2f", duty);//_us);
+            if(duty>=0.9 && duty<=2.1){
+                motor_set_duty(1, duty);
+            }
         }
-        
         while (PORTEbits.RE8 == 0);
-            
+
+        /*
+        motor_set_duty(0, 900);
+        motor_set_duty(1, 900);
+         */
         while(1);
 
         //lcd_locate(0,7);
