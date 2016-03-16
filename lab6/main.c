@@ -24,9 +24,7 @@ _FGS(GCP_OFF);
 
 int state = 0;
 
-uint16_t getX();
-uint16_t getY();
-int median(int[] arr, int n);
+int median(uint16_t* arr, int n);
 int compare (const void * a, const void * b);
 
 void main(){
@@ -41,73 +39,56 @@ void main(){
 	CLEARLED(LED1_PORT);
 	CLEARLED(LED2_PORT);
 
-        // ADC init
-        //disable ADC
-        CLEARBIT(AD2CON1bits.ADON);
-        //initialize PIN
-        SETBIT(TRISBbits.TRISB4); //set TRISE RB4 to input
-        SETBIT(TRISBbits.TRISB5); //set TRISE RB5 to input
-        SETBIT(AD2PCFGLbits.PCFG4); // RB4 analog ADC2CH4
-        SETBIT(AD2PCFGLbits.PCFG5); // RB5 analog ADC2CH5
-        //Configure AD2CON1
-        SETBIT(AD2CON1bits.AD12B); //set 12b Operation Mode
-        AD2CON1bits.FORM = 0; //set integer output
-        AD2CON1bits.SSRC = 0x7; //set automatic conversion
-        //Configure AD1CON2
-        AD2CON2 = 0; //not using scanning sampling
-        //Configure AD1CON3
-        CLEARBIT(AD2CON3bits.ADRC); //internal clock source
-        AD2CON3bits.SAMC = 0x1F; //sample-to-conversion clock = 31Tad
-        AD2CON3bits.ADCS = 0x2; //Tad = 3Tcy (Time cycles)
-        //Leave AD1CON4 at its default value
-        //enable ADC
-        SETBIT(AD2CON1bits.ADON);
-
-	// ==== button 1/external int 1 init
-	AD1PCFGHbits.PCFG20 = 1; 
-	TRISEbits.TRISE8 = 1;
-	INTCON2bits.INT1EP = 1; // polarity selection, '1' falling edge triggering of the interrupt.
-	IPC5bits.INT1IP = 0x01;
-	IFS1bits.INT1IF = 0;
-	IEC1bits.INT1IE = 1;
-        PrevStat = PORTEbits.RE8;
-
         touch_init();
+        touch_select_dim(0); // standby
+        delay(100000);
 
-        uint16_t xVal = 0;
-        uint16_t xValMin = 0;
-        uint16_t xValMax = 0;
+        uint16_t xVal[] = {0,0,0,0,0};
+        uint16_t yVal[] = {0,0,0,0,0};
+        int idx = 0;
 
-        uint16_t yVal = 0;
-        uint16_t yValMin = 0;
-        uint16_t yValMax = 0;
+        while(1){
+            touch_select_dim(1); // x
+            delay(100000);
+            xVal[idx] = touch_adc(1);
+            
+            lcd_locate(0,1);
+            lcd_printf("xm: %4d",median(xVal,5));
+            //lcd_printf("x: %4d",xVal[idx]);
 
+            lcd_locate(0,2);
+            lcd_printf("x: [%4d,%4d,%4d,%4d,%4d]",xVal[0],xVal[1],xVal[2],xVal[3],xVal[4]);
+            
+            touch_select_dim(2); // y
+            delay(100000);
+            yVal[idx] = touch_adc(2);
+            
+            lcd_locate(0,4);
+            lcd_printf("ym: %4d",median(yVal,5));
+            //lcd_printf("y: %4d",yVal[idx]);
 
-        while(1);
+            lcd_locate(0,5);
+            lcd_printf("y: [%4d,%4d,%4d,%4d,%4d]",yVal[0],yVal[1],yVal[2],yVal[3],yVal[4]);
+
+            idx++;
+            if (idx == 5){
+                idx = 0;
+            }
+        }
 
 }
 
-uint16_t getX(void){
-    AD2CHS0bits.CH0SA = 0x004; //set ADC to Sample AN4 pin
-    SETBIT(AD2CON1bits.SAMP); //start to sample
-    while(!AD2CON1bits.DONE); //wait for conversion to finish
-    CLEARBIT(AD2CON1bits.DONE); //MUST HAVE! clear conversion done bit
-    return ADC2BUF0; //return sample
-}
-uint16_t getY(void){
-    AD2CHS0bits.CH0SA = 0x005; //set ADC to Sample AN5 pin
-    SETBIT(AD2CON1bits.SAMP); //start to sample
-    while(!AD2CON1bits.DONE); //wait for conversion to finish
-    CLEARBIT(AD2CON1bits.DONE); //MUST HAVE! clear conversion done bit
-    return ADC2BUF0; //return sample
-}
-
-int median(int[] arr, int n){
-	//  assume n is odd
-	qsort(arr, n, sizeof(int), compare);
-	return arr[n+1/2]; 
+int median(uint16_t* arr, int n){
+    //  assume n is odd
+    qsort(arr, n, sizeof(uint16_t), compare);
+    return arr[(n+1)/2];
 }
 
 int compare (const void * a, const void * b){
-	return ( *(int*)a - *(int*)b );
+	return ( *(uint16_t*)a - *(uint16_t*)b );
+}
+
+void delay(uint16_t delay){
+    uint16_t i;
+    for (i = 0; i < delay; i++);
 }
