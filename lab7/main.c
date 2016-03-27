@@ -25,6 +25,7 @@ _FGS(GCP_OFF);
 
 int median(uint16_t* arr, int n);
 int compare (const void * a, const void * b);
+void delay(uint16_t delay);
 
 int start = 0;
 uint16_t xVal[] = {0,0,0,0,0};
@@ -132,9 +133,14 @@ void __attribute__ ((__interrupt__)) _T1Interrupt(void){
         xVal[i] = touch_adc(1);
     }
     // set PID x value
-    if(duty>=0.9 && duty<=2.1){
+    if(duty < 0.9)
+        duty = 0.9;
+    if(duty > 2.1)
+        duty = 2.1;
+    motor_set_duty(0, duty);
+    /*if(duty>=0.9 && duty<=2.1){
         motor_set_duty(0, duty);
-    }
+    }*/
     // allow PID computation
     start = 1;
 }
