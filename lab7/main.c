@@ -1,6 +1,6 @@
 #include <p33Fxxxx.h>
 //do not change the order of the following 3 definitions
-#define FCY 12800000UL 
+#define FCY 12800000UL
 #include <stdio.h>
 #include <stdlib.h>
 #include <libpic30.h>
@@ -15,16 +15,17 @@
 _FOSCSEL(FNOSC_PRIPLL);
 
 // OSC2 Pin Function: OSC2 is Clock Output - Primary Oscillator Mode: XT Crystal
-_FOSC(OSCIOFNC_OFF & POSCMD_XT); 
+_FOSC(OSCIOFNC_OFF & POSCMD_XT);
 
 // Watchdog Timer Enabled/disabled by user software
 _FWDT(FWDTEN_OFF);
 
 // Disable Code Protection
-_FGS(GCP_OFF);  
+_FGS(GCP_OFF);
 
 int median(uint16_t* arr, int n);
 int compare (const void * a, const void * b);
+void delay(uint16_t delay);
 
 int start = 0;
 uint16_t xVal[] = {0,0,0,0,0};
@@ -65,7 +66,8 @@ void main(){
 	motor_init(1);
 
 	// initial y position
-	motor_set_duty(1, 1.5);
+        motor_set_duty(0, 0.9);
+	motor_set_duty(1, 2.1);
 
         SETLED(LED1_PORT);
 
@@ -77,22 +79,22 @@ void main(){
         double integral = 0;
         double output = 0;
         double dt = 0.05; // second
-        double setPoint = 1350;
-        double Kp = 1.0, Ki = 0.0, Kd = 0.5;
+        double setPoint = (3135.0+265.0)/2.0;
+        double Kp = 1.0, Ki = 0.0, Kd = 0.2;
 
-        while(1){	    
+        while(1){
             while(!start);
             start = 0;
 
             // compute the median
             xMedian = median(xVal,5);
-            
+
             // perform PID computation
             error = setPoint - xMedian;
             integral = integral + error*dt;
             derivative = (error - prevErr)/dt;
             output = Kp*error + Ki*integral + Kd*derivative;
-            duty = (output + 2500.0)/(2500.0+1575.0)*1.2 + 0.9;
+            duty = (output + 1100.0)/(1400.0+1100.0)*1.2 + 0.9;
             prevErr = error;
 
             //update display value
@@ -101,7 +103,7 @@ void main(){
                 lcd_locate(0,0);
                 lcd_printf("PID: %.2f,%.2f,%.2f",Kp,Ki,Kd);
                 lcd_locate(0,1);
-                lcd_printf("xm: %3d",xMedian);
+                lcd_printf("xm: %4d",xMedian);
                 lcd_locate(0,2);
                 lcd_printf("der: %.2f",derivative);
                 lcd_locate(0,3);
@@ -132,9 +134,15 @@ void __attribute__ ((__interrupt__)) _T1Interrupt(void){
         xVal[i] = touch_adc(1);
     }
     // set PID x value
-    if(duty>=0.9 && duty<=2.1){
+    if(duty < 0.9)
+        duty = 0.9;
+    if(duty > 2.1)
+        duty = 2.1;
+    motor_set_duty(0, duty);
+    motor_set_duty(1, 2.1);
+    /*if(duty>=0.9 && duty<=2.1){
         motor_set_duty(0, duty);
-    }
+    }*/
     // allow PID computation
     start = 1;
 }
