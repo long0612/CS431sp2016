@@ -20,15 +20,15 @@ void motor_init(uint8_t chan){
     if (chan == 0){ // x
         //setup OC8
         CLEARBIT(TRISDbits.TRISD7); /* Set OC8 as output */
-        //OC8R = 3700; /* Set the initial duty cycle to 5ms*/
-        //OC8RS = 3700;
+        //OC8R = 4000-250; /* Set the initial duty cycle to 5ms*/
+        //OC8RS = 4000-250;
         OC8CON = 0x0006; /* Set OC8: PWM, no fault check, Timer2 */
 
     }else{ // y
         //setup OC7
         CLEARBIT(TRISDbits.TRISD6); /* Set OC7 as output */
-        //OC7R = 3700;
-        //OC7RS = 3700;
+        //OC7R = 4000-320;
+        //OC7RS = 4000-320;
         OC7CON = 0x0006; /* Set OC8: PWM, no fault check, Timer2 */
     }
     SETBIT(T2CONbits.TON); /* Turn Timer 2 on */
