@@ -28,8 +28,9 @@ int compare (const void * a, const void * b);
 void delay(uint16_t delay);
 
 int start = 0;
-uint16_t xVal[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-uint16_t yVal[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+uint16_t xVal[] = {0,0,0,0,0};
+uint16_t yVal[] = {0,0,0,0,0};
+uint16_t idx = 0;
 double dutyX = 0.9;
 double dutyY = 0.9;
 
@@ -95,14 +96,15 @@ void main(){
             start = 0;
 
             // compute the median
-            xMedian = median(xVal,20);
-            yMedian = median(yVal,20);
+            xMedian = median(xVal,5);
+            yMedian = median(yVal,5);
 
             // perform PID computation
             errorX = setPointX - xMedian;
             integralX = integralX + errorX*dt;
             derivativeX = (errorX - prevErrX)/dt;
             outputX = KpX*errorX + KiX*integralX + KdX*derivativeX;
+			outputX = cap(outputX,14000.0,-11000.0);
             dutyX = (outputX + 11000.0)/(14000.0+11000.0)*1.2 + 0.9;
             prevErrX = errorX;
 
@@ -110,7 +112,8 @@ void main(){
             integralY = integralY + errorY*dt;
             derivativeY = (errorY - prevErrY)/dt;
             outputY = KpY*errorY + KiY*integralY + KdY*derivativeY;
-            dutyY = (outputY + 7000.0)/(9500.0+7000.0)*1.2 + 0.9; // offset calibrated
+			outputY = cap(outputY,9500.0,-7000.0);
+            dutyY = (outputY + 7000.0)/(9500.0+7000.0)*1.2 + 0.9;
             prevErrY = errorY;
 
             //update display value
@@ -151,26 +154,33 @@ void __attribute__ ((__interrupt__)) _T1Interrupt(void){
     // read the ball position
     touch_select_dim(1); // x
     delay(100000);
-    for (i = 0; i < 20; i++){
+	/*
+    for (i = 0; i < 5; i++){
         xVal[i] = touch_adc(1);
     }
+	*/
+    xVal[idx] = touch_adc(1);
+
     touch_select_dim(2); // y
     delay(100000);
-    for (i = 0; i < 20; i++){
+	/*
+    for (i = 0; i < 5; i++){
         yVal[i] = touch_adc(2);
     }
+	*/
+    yVal[idx] = touch_adc(2);
+	
+	if (idx>=4){
+		idx = 0;
+	}else{
+		idx++;
+	}
 
     // Do control here
-    if(dutyX < 0.9)
-        dutyX = 0.9;
-    if(dutyX > 2.1)
-        dutyX = 2.1;
+	dutyX = cap(dutyX,2.1,0.9);
     motor_set_duty(0, dutyX);
     
-    if(dutyY < 0.9)
-        dutyY = 0.9;
-    if(dutyY > 2.1)
-        dutyY = 2.1;
+	dutyY = cap(dutyY,2.1,0.9);
     motor_set_duty(1, dutyY);
     //motor_set_duty(1, 2.1);
     /*if(duty>=0.9 && duty<=2.1){
@@ -178,6 +188,16 @@ void __attribute__ ((__interrupt__)) _T1Interrupt(void){
     }*/
     // allow PID computation
     start = 1;
+}
+
+double cap(double in, double up, double low){
+	if (in > up){
+		return up
+	} elseif (in < low){
+		return low;
+	} else{
+		return in;
+	}
 }
 
 int median(uint16_t* arr, int n){
