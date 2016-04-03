@@ -9,6 +9,7 @@
 #include "led.h"
 #include "flextouch.h"
 #include "flexmotor.h"
+#include "joystick.h"
 
 /* Initial configuration by EE */
 // Primary (XT, HS, EC) Oscillator with PLL
@@ -26,13 +27,19 @@ _FGS(GCP_OFF);
 int median(uint16_t* arr, int n);
 int compare (const void * a, const void * b);
 void delay(uint16_t delay);
+double cap(double in, double up, double low);
 
 int start = 0;
-uint16_t xVal[] = {0,0,0,0,0};
-uint16_t yVal[] = {0,0,0,0,0};
+uint16_t xVal[] = {0,0,0,0,0,0,0,0,0,0};
+uint16_t yVal[] = {0,0,0,0,0,0,0,0,0,0};
+uint16_t N = 10;
 uint16_t idx = 0;
 double dutyX = 0.9;
 double dutyY = 0.9;
+uint16_t xVal1 = 0;
+uint16_t yVal1 = 0;
+double setPointX = (3135.0+265.0)/2.0;
+double setPointY = (2358.0+510.0)/2.0;
 
 void main(){
 	// LCD init
@@ -44,10 +51,56 @@ void main(){
 	led_initialize();
 	CLEARLED(LED1_PORT);
 	CLEARLED(LED2_PORT);
+        CLEARLED(LED3_PORT);
 
         // ==== LPOSCEN init
 	__builtin_write_OSCCONL(OSCCONL | 2);
-	// ==== timer 1 init
+
+        // joystick init
+        joystick_init();
+        
+        // Read max/min x/y as input
+        uint16_t xValMin = 0;
+        uint16_t xValMax = 0;
+
+        uint16_t yValMin = 0;
+        uint16_t yValMax = 0;
+
+        while (state == 0){
+            xVal1 = joystick_adc(1);
+            lcd_locate(0,0);
+            lcd_printf("xMax: %4d",xVal1);
+        }
+        xValMax = xVal1;
+        while (PORTEbits.RE8 == 0);
+
+        while (state == 1){
+            xVal1 = joystick_adc(1);
+            lcd_locate(0,1);
+            lcd_printf("xMin: %4d",xVal1);
+        }
+        xValMin = xVal1;
+        while (PORTEbits.RE8 == 0);
+
+        while (state == 2){
+            yVal1 = joystick_adc(2);
+            lcd_locate(0,2);
+            lcd_printf("yMax: %4d",yVal1);
+        }
+        yValMax = yVal1;
+        while (PORTEbits.RE8 == 0);
+
+        while (state == 3){
+            yVal1 = joystick_adc(2);
+            lcd_locate(0,3);
+            lcd_printf("yMin: %4d",yVal1);
+        }
+        yValMin = yVal1;
+        while (PORTEbits.RE8 == 0);
+
+        SETLED(LED1_PORT);
+        
+        // ==== timer 1 init
 	T1CONbits.TON = 0; //Disable Timer
 	T1CONbits.TCS = 0; //Select external clock
 	T1CONbits.TSYNC = 0; //Disable Synchronization
@@ -59,18 +112,16 @@ void main(){
 	IEC0bits.T1IE = 1; // Enable Timer1 interrupt
 	T1CONbits.TON = 1; // Start Timer
 
-	// ==== touch init
+        // ==== touch init
         touch_init();
 
 	// ==== motor init
 	motor_init(0);
 	motor_init(1);
-
+        
 	// initial y position
         motor_set_duty(0, 0.9);
 	motor_set_duty(1, 0.9);
-
-        SETLED(LED1_PORT);
 
         int xMedian = 0;
         int yMedian = 0;
@@ -86,25 +137,23 @@ void main(){
         double outputX = 0;
         double outputY = 0;
         double dt = 0.05; // second
-        double setPointX = (3135.0+265.0)/2.0;
-        double setPointY = (2358.0+510.0)/2.0;
-        double KpX = 1.8, KiX = 0.0, KdX = 0.9;
-        double KpY = 1.8, KiY = 0.0, KdY = 0.7;
-
+        double KpX = 1.0, KiX = 0.05, KdX = 0.8;
+        double KpY = 1.0, KiY = 0.05, KdY = 0.6;
+        
         while(1){
             while(!start);
             start = 0;
 
             // compute the median
-            xMedian = median(xVal,5);
-            yMedian = median(yVal,5);
-
+            xMedian = median(xVal,N);
+            yMedian = median(yVal,N);
+            
             // perform PID computation
             errorX = setPointX - xMedian;
             integralX = integralX + errorX*dt;
             derivativeX = (errorX - prevErrX)/dt;
             outputX = KpX*errorX + KiX*integralX + KdX*derivativeX;
-			outputX = cap(outputX,14000.0,-11000.0);
+            outputX = cap(outputX,14000.0,-11000.0);
             dutyX = (outputX + 11000.0)/(14000.0+11000.0)*1.2 + 0.9;
             prevErrX = errorX;
 
@@ -112,31 +161,34 @@ void main(){
             integralY = integralY + errorY*dt;
             derivativeY = (errorY - prevErrY)/dt;
             outputY = KpY*errorY + KiY*integralY + KdY*derivativeY;
-			outputY = cap(outputY,9500.0,-7000.0);
+            outputY = cap(outputY,9500.0,-7000.0);
             dutyY = (outputY + 7000.0)/(9500.0+7000.0)*1.2 + 0.9;
             prevErrY = errorY;
-
+            
             //update display value
-            if (count == 20){
+            if (count == 30){
+                // get new set points
+                xVal1 = joystick_adc(1);
+                yVal1 = joystick_adc(2);
+                while (PORTEbits.RE8 == 0);
+                
                 lcd_clear();
-                /*
                 lcd_locate(0,0);
                 lcd_printf("PID: %.2f,%.2f,%.2f",KpX,KiX,KdX);
                 lcd_locate(0,1);
-                lcd_printf("xm: %4d, ym: %4d",xMedian,yMedian);
-                lcd_locate(0,2);
                 lcd_printf("int: %.2f,%.2f",integralX,integralY);
-                */
-                lcd_locate(0,3);
+                lcd_locate(0,2);
                 lcd_printf("der: %.2f,%.2f",derivativeX,derivativeY);
-                lcd_locate(0,4);
+                lcd_locate(0,3);
                 lcd_printf("err: %.2f,%.2f",errorX,errorY);
-                lcd_locate(0,5);
+                lcd_locate(0,4);
                 lcd_printf("F_x: %.2f,%.2f",outputX,outputY);
-                lcd_locate(0,6);
+                lcd_locate(0,5);
                 lcd_printf("duty: %.3f,%.3f",dutyX, dutyY);
-                //lcd_locate(0,7);
-                //lcd_printf("SP: %.2f,%.2f", setPointX, setPointY);
+                lcd_locate(0,6);
+                lcd_printf("cur: %4d,%4d",xVal1,yVal1);
+                lcd_locate(0,7);
+                lcd_printf("set: %.1f,%.1f",setPointX,setPointY);
                 count = 0;
             }
             count++;
@@ -155,7 +207,7 @@ void __attribute__ ((__interrupt__)) _T1Interrupt(void){
     touch_select_dim(1); // x
     delay(100000);
 	/*
-    for (i = 0; i < 5; i++){
+    for (i = 0; i < N; i++){
         xVal[i] = touch_adc(1);
     }
 	*/
@@ -164,23 +216,23 @@ void __attribute__ ((__interrupt__)) _T1Interrupt(void){
     touch_select_dim(2); // y
     delay(100000);
 	/*
-    for (i = 0; i < 5; i++){
+    for (i = 0; i < N; i++){
         yVal[i] = touch_adc(2);
     }
 	*/
     yVal[idx] = touch_adc(2);
 	
-	if (idx>=4){
-		idx = 0;
-	}else{
-		idx++;
-	}
+    if (idx>=N-1){
+            idx = 0;
+    }else{
+            idx++;
+    }
 
     // Do control here
-	dutyX = cap(dutyX,2.1,0.9);
+    dutyX = cap(dutyX,2.1,0.9);
     motor_set_duty(0, dutyX);
     
-	dutyY = cap(dutyY,2.1,0.9);
+    dutyY = cap(dutyY,2.1,0.9);
     motor_set_duty(1, dutyY);
     //motor_set_duty(1, 2.1);
     /*if(duty>=0.9 && duty<=2.1){
@@ -191,13 +243,13 @@ void __attribute__ ((__interrupt__)) _T1Interrupt(void){
 }
 
 double cap(double in, double up, double low){
-	if (in > up){
-		return up
-	} elseif (in < low){
-		return low;
-	} else{
-		return in;
-	}
+    if (in > up){
+            return up;
+    } else if (in < low){
+            return low;
+    } else{
+            return in;
+    }
 }
 
 int median(uint16_t* arr, int n){
@@ -213,4 +265,29 @@ int compare (const void * a, const void * b){
 void delay(uint16_t delay){
     uint16_t i;
     for (i = 0; i < delay; i++);
+}
+
+void __attribute__ ((__interrupt__)) _INT1Interrupt(void){
+    IFS1bits.INT1IF = 0;
+    TOGGLELED(LED3_PORT);
+    uint32_t DBcount = 0;
+    uint32_t Tcount = 0;
+
+    for (Tcount = 0; Tcount < 2500; Tcount ++ ){
+        if (PORTEbits.RE8 != PrevStat)
+            DBcount++;
+    }
+
+    // TODO: better debouncing
+    if(DBcount > 250){
+        // state changed declared
+        PrevStat = PORTEbits.RE8;
+        state++;
+        if (state > 4){
+            setPointX = (double)xVal1; // TODO: conversion
+            setPointY = (double)yVal1;
+        }
+    }
+    Tcount = 0;
+    DBcount = 0;
 }
