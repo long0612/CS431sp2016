@@ -45,11 +45,11 @@ void joystick_init(){
     PrevStat = PORTEbits.RE8;
 }
 
-uint16_t joystick_adc(uint8_t dim){
+double joystick_adc(uint8_t dim){
     if (dim == 1){
-        return jgetX();
+        return (double)jgetX();
     } else if (dim==2){
-        return jgetY();
+        return (double)jgetY();
     }
 }
 
