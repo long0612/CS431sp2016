@@ -32,7 +32,7 @@ uint32_t DBcount = 0;
 int start = 0;
 double xVal[] = {0,0,0,0,0,0,0,0,0,0};
 double yVal[] = {0,0,0,0,0,0,0,0,0,0};
-uint16_t N = 5;
+uint16_t N = 10;
 uint16_t idx = 0;
 double dutyX = 0.9;
 double dutyY = 0.9;
@@ -42,14 +42,13 @@ double xValMin = 0;
 double xValMax = 0;
 double yValMin = 0;
 double yValMax = 0;
-const double setPointXMax = 3100;//3135.0;
-const double setPointXMin = 300;//265.0;
-double setPointX = (3100.0+300.0)/2.0;
-const double setPointYMax = 2755;//2358.0;
-const double setPointYMin = 438;//510.0;
-double setPointY = (2755.0+438.0)/2.0;
-int lpFlg = 0;
-int intFlg = 0;
+const double setPointXMax = 3135.0;
+const double setPointXMin = 265.0;
+double setPointX = (3135.0+265.0)/2.0;
+const double setPointYMax = 2358.0;
+const double setPointYMin = 510.0;
+double setPointY = (2358.0+510.0)/2.0;
+
 void main(){
 	// LCD init
 	__C30_UART=1;
@@ -120,7 +119,7 @@ void main(){
 	T1CONbits.TSYNC = 0; //Disable Synchronization
 	T1CONbits.TCKPS = 0b10; //Select 1:64 Prescaler
 	TMR1 = 0x00; // Clear timer register
-	PR1 = 5000; // Load the period value, 50 ms (5000 -> 25 ms)
+	PR1 = 10000; // Load the period value, 50 ms
 	IPC0bits.T1IP = 0x01; // Set Timer1 Interrupt Priority Level
 	IFS0bits.T1IF = 0; // Clear Timer1 Interrupt Flag
 	IEC0bits.T1IE = 1; // Enable Timer1 interrupt
@@ -136,6 +135,7 @@ void main(){
 	// initial y position
         motor_set_duty(0, 0.9);
 	motor_set_duty(1, 0.9);
+
         int count = 0;
         double xMedian = 0;
         double yMedian = 0;
@@ -150,78 +150,33 @@ void main(){
         double outputX = 0;
         double outputY = 0;
         double dt = 0.05; // second
-        double KpX = 1.2, KiX = 0.01, KdX = 0.6;
-        double KpY = 1.0, KiY = 0.0, KdY = 0.8;
-//        double KpX = 1.2, KiX = 0.0, KdX = 0.4;
-//        double KpY = 1.0, KiY = 0.0, KdY = 0.8;
-        int i = 0;
-        touch_select_dim(1); // x
-        delay(100000);
-        lpFlg = 0;
-        intFlg =0;
-        for (i = 0; i<5; i ++)
-            xVal[i] = touch_adc(1);
-        xMedian = median(xVal,N);
-        errorX = setPointX - xMedian;
-        integralX = 0;//integralX + errorX*dt;
-        derivativeX = (errorX - prevErrX)/dt;
-        outputX = KpX*errorX + KiX*integralX + KdX*derivativeX;
-        outputX = cap(outputX,7000.0,-7000.0);
-        dutyX = (outputX + 7000.0)/(7000.0+7000.0)*1.2 + 0.9;
-        prevErrX = 0;// errorX;
-        touch_select_dim(2);
+        double KpX = 1.0, KiX = 0.05, KdX = 0.8;
+        double KpY = 1.0, KiY = 0.05, KdY = 0.6;
+
         while(1){
-            intFlg = 1;
-            if(PrevStat == 0){
-                TOGGLELED(LED3_PORT);
-                //TOGGLELED(LED2_PORT);
-                //state++;
-                //Set the points
-                xVal1 = joystick_adc(1);
-                yVal1 = joystick_adc(2);
-                setPointX = ((xVal1-xValMin)/(xValMax-xValMin))*(setPointXMax-setPointXMin)+setPointXMin; // TODO: conversion
-                setPointX = cap(setPointX,setPointXMax,setPointXMin);
-                setPointY = ((yVal1-yValMin)/(yValMax-yValMin))*(setPointYMax-setPointYMin)+setPointYMin;
-                setPointY = cap(setPointY,setPointYMax,setPointYMin);
-                while(PORTEbits.RE8 == 0);
-                PrevStat = 1;
-                prevErrX =0;
-                integralX = 0;
-                prevErrY =0;
-                integralY = 0;
-            }
-//            if( ps == 0)
-//                    state++
-            while(!start);// ps == 1);
+            while(!start);
             start = 0;
-            if (lpFlg == 0){
-                yMedian = median(yVal,N);
-                errorY = setPointY - yMedian;
-                integralY = integralY + errorY*dt;
-                derivativeY = (errorY - prevErrY)/dt;
-                outputY = KpY*errorY + KiY*integralY + KdY*derivativeY;
-                outputY = cap(outputY,4250.0,-4250.0);
-                dutyY = (outputY + 4250.0)/(4250.0+4250.0)*1.2 + 0.9;
-                prevErrY = errorY;
-                lpFlg = 1;
-            } else {
-                xMedian = median(xVal,N);
-                errorX = setPointX - xMedian;
-                integralX = integralX + errorX*dt;
-                derivativeX = (errorX - prevErrX)/dt;
-                outputX = KpX*errorX + KiX*integralX + KdX*derivativeX;
-                outputX = cap(outputX,7000.0,-7000.0);
-                dutyX = (outputX + 6500.0)/(7000.0+7000.0)*1.2 + 0.9;
-                prevErrX = errorX;
-                lpFlg = 0;
-            }
+
             // compute the median
-            /*
             xMedian = median(xVal,N);
             yMedian = median(yVal,N);
-*/
-            // perform PID computation
 
+            // perform PID computation
+            errorX = setPointX - xMedian;
+            integralX = integralX + errorX*dt;
+            derivativeX = (errorX - prevErrX)/dt;
+            outputX = KpX*errorX + KiX*integralX + KdX*derivativeX;
+            outputX = cap(outputX,14000.0,-11000.0);
+            dutyX = (outputX + 11000.0)/(14000.0+11000.0)*1.2 + 0.9;
+            prevErrX = errorX;
+
+            errorY = setPointY - yMedian;
+            integralY = integralY + errorY*dt;
+            derivativeY = (errorY - prevErrY)/dt;
+            outputY = KpY*errorY + KiY*integralY + KdY*derivativeY;
+            outputY = cap(outputY,9500.0,-9500.0);
+            dutyY = (outputY + 9500.0)/(9500.0+9500.0)*1.2 + 0.9;
+            prevErrY = errorY;
 
             //update display value
             if (count == 30){
@@ -231,25 +186,22 @@ void main(){
                 while (PORTEbits.RE8 == 0);
 
                 lcd_clear();
-/*                lcd_locate(0,0);
+                lcd_locate(0,0);
                 lcd_printf("PID: %.2f,%.2f,%.2f",KpX,KiX,KdX);
                 lcd_locate(0,1);
                 lcd_printf("int: %.2f,%.2f",integralX,integralY);
                 lcd_locate(0,2);
                 lcd_printf("der: %.2f,%.2f",derivativeX,derivativeY);
-                lcd_locate(0,3);*/
+                lcd_locate(0,3);
                 lcd_printf("err: %.2f,%.2f",errorX,errorY);
                 lcd_locate(0,4);
-                lcd_printf("cur: %4.1f,%4.1f", xMedian,yMedian);/*
                 lcd_printf("F_x: %.2f,%.2f",outputX,outputY);
                 lcd_locate(0,5);
                 lcd_printf("duty: %.3f,%.3f",dutyX, dutyY);
                 lcd_locate(0,6);
-                lcd_printf("cur: %4.1f,%4.1f",xVal1,yVal1);*/
+                lcd_printf("cur: %4.1f,%4.1f",xVal1,yVal1);
                 lcd_locate(0,7);
-                //lcd_printf("cur: %4.1f,%4.1f", xMedian,yMedian);/*
                 lcd_printf("set: %4.1f,%4.1f",setPointX,setPointY);
- 
                 count = 0;
             }
             count++;
@@ -263,38 +215,24 @@ void __attribute__ ((__interrupt__)) _T1Interrupt(void){
     IFS0bits.T1IF = 0;
 
     TOGGLELED(LED2_PORT);
-    if (lpFlg == 0 && intFlg == 1){
-        for (i=0; i<5; i++)
-            yVal[i] = touch_adc(2);
-        dutyX = cap(dutyX,2.1,0.9);
-        motor_set_duty(0, dutyX);
-        touch_select_dim(1);
-        //intFlg = 1;
-    } else if(lpFlg == 1 && intFlg == 1) {
-        for (i=0; i<5; i++)
-            xVal[i] = touch_adc(1);
-        dutyY = cap(dutyY,2.1,0.9);
-        motor_set_duty(1, dutyY);
-        touch_select_dim(2);
-        //intFlg = 0;
-    }
+
     // read the ball position
-    //touch_select_dim(1); // x
-    //delay(100000);
+    touch_select_dim(1); // x
+    delay(100000);
 	/*
     for (i = 0; i < N; i++){
         xVal[i] = touch_adc(1);
     }
 	*/
-    //xVal[idx] = touch_adc(1);
+    xVal[idx] = touch_adc(1);
 
-    //touch_select_dim(2); // y
-    //delay(100000);
+    touch_select_dim(2); // y
+    delay(100000);
 	/*
     for (i = 0; i < N; i++){
         yVal[i] = touch_adc(2);
     }
-	
+	*/
     yVal[idx] = touch_adc(2);
 
     if (idx>=N-1){
@@ -304,18 +242,17 @@ void __attribute__ ((__interrupt__)) _T1Interrupt(void){
     }
 
     // Do control here
-    //dutyX = cap(dutyX,2.1,0.9);
-    //motor_set_duty(0, dutyX);
+    dutyX = cap(dutyX,2.1,0.9);
+    motor_set_duty(0, dutyX);
 
-    //dutyY = cap(dutyY,2.1,0.9);
-    //motor_set_duty(1, dutyY);
+    dutyY = cap(dutyY,2.1,0.9);
+    motor_set_duty(1, dutyY);
     //motor_set_duty(1, 2.1);
     /*if(duty>=0.9 && duty<=2.1){
         motor_set_duty(0, duty);
     }*/
-    // allow PID computation*/
-    if(intFlg == 1)
-        start = 1;
+    // allow PID computation
+    start = 1;
 }
 
 double cap(double in, double up, double low){
@@ -344,7 +281,7 @@ void delay(uint16_t delay){
 }
 
 void __attribute__ ((__interrupt__)) _INT1Interrupt(void){
-   // TOGGLELED(LED3_PORT);
+    TOGGLELED(LED3_PORT);
     //uint32_t DBcount = 0;
     uint32_t Tcount;
 
@@ -366,7 +303,7 @@ void __attribute__ ((__interrupt__)) _INT1Interrupt(void){
         }
         DBcount = 0;
     }
-
+    
     //Tcount = 0;
     DBcount = 0;
     IFS1bits.INT1IF = 0;

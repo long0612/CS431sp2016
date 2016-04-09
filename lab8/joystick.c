@@ -7,7 +7,7 @@
 #include "types.h"
 //#include "joystick.h"
 
-int PrevStat = 0;
+int PrevStat;// = 0;
 int state = 0;
 uint16_t jgetX();
 uint16_t jgetY();
