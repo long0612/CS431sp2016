@@ -42,12 +42,12 @@ double xValMin = 0;
 double xValMax = 0;
 double yValMin = 0;
 double yValMax = 0;
-const double setPointXMax = 3100;//3135.0;
-const double setPointXMin = 300;//265.0;
-double setPointX = (3100.0+300.0)/2.0;
-const double setPointYMax = 2755;//2358.0;
-const double setPointYMin = 438;//510.0;
-double setPointY = (2755.0+438.0)/2.0;
+const double setPointXMax = 2896.0;
+const double setPointXMin = 357.0;
+double setPointX = ((2896.0+357.0)/2.0);
+const double setPointYMax = 2380.0;
+const double setPointYMin = 490.0;
+double setPointY = (2380.0+490.0)/2.0;
 int lpFlg = 0;
 int intFlg = 0;
 void main(){
@@ -150,8 +150,8 @@ void main(){
         double outputX = 0;
         double outputY = 0;
         double dt = 0.05; // second
-        double KpX = 1.2, KiX = 0.01, KdX = 0.6;
-        double KpY = 1.0, KiY = 0.0, KdY = 0.8;
+        double KpX = 1.2, KiX = 0.0, KdX = 1.2;
+        double KpY = 1.2, KiY = 0.0, KdY = 1.2;
 //        double KpX = 1.2, KiX = 0.0, KdX = 0.4;
 //        double KpY = 1.0, KiY = 0.0, KdY = 0.8;
         int i = 0;
@@ -166,8 +166,8 @@ void main(){
         integralX = 0;//integralX + errorX*dt;
         derivativeX = (errorX - prevErrX)/dt;
         outputX = KpX*errorX + KiX*integralX + KdX*derivativeX;
-        outputX = cap(outputX,7000.0,-7000.0);
-        dutyX = (outputX + 7000.0)/(7000.0+7000.0)*1.2 + 0.9;
+        outputX = cap(outputX,6000.0,-6000.0);
+        dutyX = (outputX + 6000.0)/(6000.0+6000.0)*1.2 + 0.9;
         prevErrX = 0;// errorX;
         touch_select_dim(2);
         while(1){
@@ -200,8 +200,9 @@ void main(){
                 integralY = integralY + errorY*dt;
                 derivativeY = (errorY - prevErrY)/dt;
                 outputY = KpY*errorY + KiY*integralY + KdY*derivativeY;
-                outputY = cap(outputY,4250.0,-4250.0);
-                dutyY = (outputY + 4250.0)/(4250.0+4250.0)*1.2 + 0.9;
+                outputY = cap(outputY,14000.0,-11000.0);
+                //dutyY = cap(outputY, 2.1, 0.9);
+                dutyY = (outputY + 11500.0)/(14000.0+11000.0)*1.2 + 0.9;
                 prevErrY = errorY;
                 lpFlg = 1;
             } else {
@@ -210,8 +211,9 @@ void main(){
                 integralX = integralX + errorX*dt;
                 derivativeX = (errorX - prevErrX)/dt;
                 outputX = KpX*errorX + KiX*integralX + KdX*derivativeX;
-                outputX = cap(outputX,7000.0,-7000.0);
-                dutyX = (outputX + 6500.0)/(7000.0+7000.0)*1.2 + 0.9;
+                //dutyX = cap(outputX, 2.1, 0.9);
+                outputX = cap(outputX,9500.0,-7000.0);
+                dutyX = (outputX + 7500.0)/(9500.0+7000.0)*1.2 + 0.9;
                 prevErrX = errorX;
                 lpFlg = 0;
             }
@@ -229,27 +231,27 @@ void main(){
                 xVal1 = joystick_adc(1);
                 yVal1 = joystick_adc(2);
                 while (PORTEbits.RE8 == 0);
-
-                lcd_clear();
-/*                lcd_locate(0,0);
-                lcd_printf("PID: %.2f,%.2f,%.2f",KpX,KiX,KdX);
-                lcd_locate(0,1);
-                lcd_printf("int: %.2f,%.2f",integralX,integralY);
+//
+//                lcd_clear();
+///*                lcd_locate(0,0);
+//                lcd_printf("PID: %.2f,%.2f,%.2f",KpX,KiX,KdX);
+//                lcd_locate(0,1);
+//                lcd_printf("int: %.2f,%.2f",integralX,integralY);
                 lcd_locate(0,2);
                 lcd_printf("der: %.2f,%.2f",derivativeX,derivativeY);
-                lcd_locate(0,3);*/
+                lcd_locate(0,3);
                 lcd_printf("err: %.2f,%.2f",errorX,errorY);
-                lcd_locate(0,4);
-                lcd_printf("cur: %4.1f,%4.1f", xMedian,yMedian);/*
-                lcd_printf("F_x: %.2f,%.2f",outputX,outputY);
-                lcd_locate(0,5);
-                lcd_printf("duty: %.3f,%.3f",dutyX, dutyY);
-                lcd_locate(0,6);
-                lcd_printf("cur: %4.1f,%4.1f",xVal1,yVal1);*/
+//                lcd_locate(0,4);
+//                lcd_printf("cur: %4.1f,%4.1f", xMedian,yMedian);/*
+//                lcd_printf("F_x: %.2f,%.2f",outputX,outputY);
+//                lcd_locate(0,5);
+//                lcd_printf("duty: %.3f,%.3f",dutyX, dutyY);
+//                lcd_locate(0,6);
+//                lcd_printf("cur: %4.1f,%4.1f",xVal1,yVal1);*/
                 lcd_locate(0,7);
-                //lcd_printf("cur: %4.1f,%4.1f", xMedian,yMedian);/*
-                lcd_printf("set: %4.1f,%4.1f",setPointX,setPointY);
- 
+                lcd_printf("cur: %4.1f,%4.1f", xMedian,yMedian);
+//                //lcd_printf("set: %4.1f,%4.1f",setPointX,setPointY);
+
                 count = 0;
             }
             count++;
@@ -293,20 +295,17 @@ void __attribute__ ((__interrupt__)) _T1Interrupt(void){
 	/*
     for (i = 0; i < N; i++){
         yVal[i] = touch_adc(2);
-    }
-	
-    yVal[idx] = touch_adc(2);
+    }SUCCESSFUL (total time: 2s)
 
+    yVal[idx] = touch_adc(2);
     if (idx>=N-1){
             idx = 0;
     }else{
             idx++;
     }
-
     // Do control here
     //dutyX = cap(dutyX,2.1,0.9);
     //motor_set_duty(0, dutyX);
-
     //dutyY = cap(dutyY,2.1,0.9);
     //motor_set_duty(1, dutyY);
     //motor_set_duty(1, 2.1);
