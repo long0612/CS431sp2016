@@ -14,11 +14,17 @@
 // control task frequency (Hz)
 #define RT_FREQ 50
 
+uint16_t TOUCH_MIN_X = 150;
+uint16_t TOUCH_MAX_X = 3100;
+uint16_t TOUCH_MIN_Y = 380;
+uint16_t TOUCH_MAX_Y = 2700;
+
+
 //setpoint parameters
-#define SPEED 0.08  // tested up to .12!
+#define SPEED 0.10  // tested up to .12!
 #define RADIUS 350
-#define CENTER_X 1650
-#define CENTER_Y 1350
+#define CENTER_X (3250)/2 //(3100.0+300.0)/2.0
+#define CENTER_Y (3080)/2 //(2755.0+438.0)/2.0
 
 // Servo defines
 #define MAX_DUTY_MICROSEC 2100
@@ -33,10 +39,6 @@
 #define X_DIM 1
 #define Y_DIM 2
 
-uint16_t TOUCH_MIN_X = 340;
-uint16_t TOUCH_MAX_X = 3020;
-uint16_t TOUCH_MIN_Y = 454;
-uint16_t TOUCH_MAX_Y = 2657;
 
 // do not change position of this include
 #include <libpic30.h>
@@ -56,11 +58,11 @@ _FGS(GCP_OFF);
 
 
 // control setpoint
-double Xpos_set = (3100.0+300.0)/2.0, Ypos_set = (2755.0+438.0)/2.0;
+double Xpos_set = CENTER_X, Ypos_set = CENTER_Y;
 
 
 // raw, unfiltered X and Y position of the ball
-volatile uint16_t Xpos, Ypos;
+volatile double Xpos, Ypos;
 volatile uint8_t start = 0;
 volatile uint8_t select = X_DIM;
 volatile uint8_t deadline_miss = 0;
@@ -71,10 +73,13 @@ volatile uint8_t deadline_miss = 0;
 double median(double* arr, int n);
 int compare (const void * a, const void * b);
 double cap(double in, double up, double low);
+double smooth(double in, double up, double low, double prev);
 
 
 double xVal[] = {0,0,0,0,0};
 double yVal[] = {0,0,0,0,0};
+double xPrevVal = 0;
+double yPrevVal = 0;
 int N = 5;
 double xMedian = 0;
 double yMedian = 0;
@@ -90,18 +95,21 @@ double integralY = 0;
 double outputX = 0;
 double outputY = 0;
 double dt = 0.01; // second
-double KpX = 1.2, KiX = 0.01 , KdX = 1.2;//0.6;
-double KpY = 1.0, KiY = 0.01 , KdY = 1.2;//0.8;
+double KpX = 0.176, KiX = 0.00 , KdX = 0.49;
+double KpY = 0.153, KiY = 0.00 , KdY = 0.56;
 
 double pidX_controller(double Xp) {
     // TODO: Implement PID X
     double pid;
     errorX = Xpos_set - Xp;
     integralX = integralX + errorX*dt;
-    derivativeX = (errorX - prevErrX)/dt;
+    derivativeX = (errorX - prevErrX);
     outputX = KpX*errorX + KiX*integralX + KdX*derivativeX;
+//  outputX = cap(outputX,8000.0,-8000.0);
 
-    pid = (outputX + 4500.0)/(4500.0+4000.0)*1.2 + 0.9;
+//    pid = (outputX + 8000.0)/(8000.0+8000.0)*1.2 + 0.9;
+    pid =outputX;
+
     prevErrX = errorX;
     return pid;
 }
@@ -112,11 +120,14 @@ double pidY_controller(double Yp) {
     double pid;
     errorY = Ypos_set - Yp;
     integralY = integralY + errorY*dt;
-    derivativeY = (errorY - prevErrY)/dt;
+    derivativeY = (errorY - prevErrY);
     outputY = KpY*errorY + KiY*integralY + KdY*derivativeY;
+//    outputY = cap(outputY,8000.0,-8000.0);
 
-    pid = (outputY + 4500.0)/(4500.0+4000.0)*1.2 + 0.9;
+//    pid = (outputY + 8000.0)/(8000.0+8000.0)*1.2 + 0.9;
     prevErrY = errorY;
+    pid = outputY;
+
     return pid;
 }
 
@@ -175,10 +186,12 @@ int main(){
     // 50Hz control task
     if(hz50_scaler == 0) {
       calcQEI(Xpos_set, Xpos, Ypos_set, Ypos);
-
+//      Xpos_set = CENTER_X;
+//      Xpos_set = CENTER_Y;
       Xpos_set = CENTER_X + RADIUS * cos(tick * SPEED);
       Ypos_set = CENTER_Y + RADIUS * sin(tick * SPEED);
       tick++;
+
 
       pidX = pidX_controller(Xpos);
       pidY = pidY_controller(Ypos);
@@ -188,17 +201,28 @@ int main(){
       // setMotorDuty is a wrapper function that calls your motor_set_duty
       // implementation in flexmotor.c. The 2nd parameter expects a value
       // between 900-2100 us
-      duty_us_x = cap((pidX*1000), 2100, 900);
-      duty_us_y = cap((pidY*1000), 2100, 900);
-      setMotorDuty(MOTOR_X_CHAN, duty_us_x);
-      setMotorDuty(MOTOR_Y_CHAN, duty_us_y);
+//      duty_us_x = cap((pidX*1000.0), 2100, 900);
+//      duty_us_y = cap((pidY*1000.0), 2100, 900);
+
+      duty_us_x = cap((pidX + 1500), 2100, 900);
+      duty_us_y = cap((pidY + 1500), 2100, 900);
+      motor_set_duty(1, duty_us_x);
+      motor_set_duty(2, duty_us_y+100);
+//      setMotorDuty(MOTOR_X_CHAN, duty_us_x);
+//      setMotorDuty(MOTOR_Y_CHAN, duty_us_y);
     }
 
     // 5Hz display task
     if(hz5_scaler == 0) {
-      lcd_locate(0,1);
-      lcd_printf("Xf(t)=%u", Xpos);
-
+//      lcd_locate(0,1);
+//      lcd_printf("Xp=%.1f,Yp=%.1f", Xpos, Ypos);
+//      lcd_locate(0,2);
+//      lcd_printf("X*=%.1f, Y*=%.1f", Xpos_set, Ypos_set);
+//      lcd_locate(0,3);
+//      lcd_printf("pX=%.1f,pY=%.1f", pidX, pidY);
+//      lcd_locate(0,4);
+//      lcd_printf("dx=%u, dY=%u", duty_us_x, duty_us_y);
+//
       if(deadline_miss >= 1) {
         lcd_locate(0,6);
         lcd_printf("%4d d_misses!!!", deadline_miss);
@@ -234,18 +258,25 @@ void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
   if (select == X_DIM) {
     // DONE: read 5 samples from X-dimension and set Xpos as the median
     int i = 0;
-    for (i = 0; i<5; i ++)
-        xVal[i] = touch_adc(1);
+    for (i = 0; i<N; i ++){
+        xVal[i] = smooth(touch_adc(1), TOUCH_MAX_X, TOUCH_MIN_X,xPrevVal);
+//        xVal[i] = touch_adc(1);//cap(touch_adc(1), TOUCH_MAX_X, TOUCH_MIN_X);
+    }
     Xpos = median(xVal,N);
+    xPrevVal = Xpos;
     touch_select_dim(Y_DIM);
     select = Y_DIM;
   }
   else {
     // DONE: read 5 samples from Y-dimension and set Ypos as the median
     int i = 0;
-    for (i = 0; i<5; i ++)
-        yVal[i] = touch_adc(2);
+    for (i = 0; i<N; i ++){
+        yVal[i] = smooth(touch_adc(2), TOUCH_MAX_Y, TOUCH_MIN_Y,yPrevVal);
+//         yVal[i] = touch_adc(2);//cap(touch_adc(2), TOUCH_MAX_Y, TOUCH_MIN_Y);
+    }
+
     Ypos = median(yVal,N);
+    yPrevVal = Ypos;
     touch_select_dim(X_DIM);
     select = X_DIM;
   }
@@ -264,10 +295,21 @@ int compare (const void * a, const void * b){
 }
 
 double cap(double in, double up, double low){
+//    return in;
     if (in > up){
             return up;
     } else if (in < low){
             return low;
+    } else{
+            return in;
+    }
+}
+double smooth(double in, double up, double low, double prev){
+//    return in;
+    if (in > up){
+            return prev;
+    } else if (in < low){
+            return prev;
     } else{
             return in;
     }
