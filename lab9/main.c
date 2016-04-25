@@ -21,8 +21,8 @@ uint16_t TOUCH_MAX_Y = 2700;
 
 
 //setpoint parameters
-#define SPEED 0.10  // tested up to .12!
-#define RADIUS 350
+#define SPEED 0.08  // tested up to .12!
+#define RADIUS 400
 #define CENTER_X (3250)/2 //(3100.0+300.0)/2.0
 #define CENTER_Y (3080)/2 //(2755.0+438.0)/2.0
 
@@ -95,8 +95,10 @@ double integralY = 0;
 double outputX = 0;
 double outputY = 0;
 double dt = 0.01; // second
-double KpX = 0.176, KiX = 0.00 , KdX = 0.49;
-double KpY = 0.153, KiY = 0.00 , KdY = 0.56;
+double KpX = 0.190, KiX = 0.00 , KdX = 1.45;
+double KpY = 0.190, KiY = 0.00 , KdY = 1.45;
+//double KpX = 0.176, KiX = 0.00 , KdX = 0.49;
+//double KpY = 0.15, KiY = 0.00 , KdY = 0.56;
 
 double pidX_controller(double Xp) {
     // TODO: Implement PID X
@@ -179,7 +181,8 @@ int main(){
       RESTORE_CPU_IPL(old_IPL);
     }
 
-    // Periodic real-time task code starts here!!!
+    // Periodic real-time task code starts here = CENTER_X + RADIUS * cos(tick * SPEED);
+//      Ypos_set = CENT!!!
     double pidX, pidY;
     uint16_t duty_us_x, duty_us_y;
 
