@@ -72,6 +72,7 @@ static void AppMotorTask (void *p_arg);
 uint16_t median(uint16_t* arr, uint16_t n);
 uint16_t smooth(uint16_t in, uint16_t up, uint16_t low, uint16_t prev);
 double cap(double in, double up, double low);
+uint16_t butterFilt(uint16_t* in, uint16_t* out, uint16_t n, uint16_t N);
 //static void LedTimer();
 
 /*
@@ -255,6 +256,8 @@ static void AppTouchTask(void *p_arg) {
     uint16_t N = 5;
     uint16_t xVal[] = {0,0,0,0,0};
     uint16_t yVal[] = {0,0,0,0,0};
+    uint16_t xOut[] = {0,0,0,0,0};
+    uint16_t yOut[] = {0,0,0,0,0};
     uint16_t xPrevVal = 0;
     uint16_t yPrevVal = 0;
 
@@ -266,9 +269,12 @@ static void AppTouchTask(void *p_arg) {
             // DONE: read samples from X-dimension and set Xpos as the median
             int i = 0;
             for (i = 0; i<N; i ++){
-                xVal[i] = smooth(touch_adc(1), TOUCH_MAX_X, TOUCH_MIN_X,xPrevVal);
+//                xVal[i] = smooth(touch_adc(1), TOUCH_MAX_X, TOUCH_MIN_X,xPrevVal);
+                xVal[i] = touch_adc(1);
+                xOut[i] = butterFilt(xVal, xOut, i, N);
             }
-            Xpos = median(xVal,N);
+//            Xpos = median(xVal,N);
+            Xpos = xOut[N-1];
             xPrevVal = Xpos;
             touch_select_dim(Y_DIM);
             select = Y_DIM;
@@ -276,10 +282,12 @@ static void AppTouchTask(void *p_arg) {
             // DONE: read samples from Y-dimension and set Ypos as the median
             int i = 0;
             for (i = 0; i<N; i ++){
-                yVal[i] = smooth(touch_adc(2), TOUCH_MAX_Y, TOUCH_MIN_Y,yPrevVal);
+//                yVal[i] = smooth(touch_adc(2), TOUCH_MAX_Y, TOUCH_MIN_Y,yPrevVal);
+                yVal[i] = touch_adc(2);
+                yOut[i] = butterFilt(yVal, yOut, i, N);
             }
-
-            Ypos = median(yVal,N);
+//            Ypos = median(yVal,N);
+            Ypos = yOut[N-1];
             yPrevVal = Ypos;
             touch_select_dim(X_DIM);
             select = X_DIM;
@@ -384,6 +392,40 @@ uint16_t smooth(uint16_t in, uint16_t up, uint16_t low, uint16_t prev){
     } else{
             return in;
     }
+}
+
+uint16_t butterFilt(uint16_t* in, uint16_t* out, uint16_t n, uint16_t N){
+    uint16_t i = 0;
+    double inD[N];
+    double outD[N];
+    double B[] = {0.0940, 0.3759, 0.5639, 0.3759, 0.0940};
+    double A[] = {1.0000, 0.0000,0.4860, 0.0000,0.0177};
+
+    for (i = 0; i < N; i++){
+        inD[i] = (double)in[i];
+        outD[i] = (double)out[i];
+    }
+
+    double acc = 0.0;
+    for (i = 0; i < N; i++){
+        if (n-1 < 0){
+            acc += B[i]/A[0]*inD[n-i+N];
+        }else if (n-1 >= N){
+            acc += B[i]/A[0]*inD[n-i-N];
+        }else{
+            acc += B[i]/A[0]*inD[n-i];
+        }
+    }
+    for (i = 1; i < N; i++){
+        if (n-1 < 0){
+            acc -= A[i]/A[0]*outD[n-i+N];
+        }else if (n-1 >= N){
+            acc -= A[i]/A[0]*outD[n-i-N];
+        }else{
+            acc -= A[i]/A[0]*outD[n-i];
+        }
+    }
+    return (uint16_t)acc;
 }
 
 double cap(double in, double up, double low){
