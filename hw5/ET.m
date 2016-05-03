@@ -1,5 +1,5 @@
-function [ind,out,D] = ET(C,P,B,D,S)
-% [ind,out,D] = ET(C,P,B,D,S)
+function [ind,out,DD] = ET(C,P,B,D,S)
+% [ind,out,DD] = ET(C,P,B,D,S)
 % Exact schedulability test
 %
 % Long Le
@@ -7,6 +7,7 @@ function [ind,out,D] = ET(C,P,B,D,S)
 %
 
 N = numel(C);
+DD = D;
 
 out = zeros(N,1);
 ind = false(N,1);
@@ -28,6 +29,7 @@ for i = 1:N
         end
         if newOut > D(i)
             ind(i) = 0;
+            out(i) = newOut; % output the latest
             break;
         end
         out(i) = newOut;
